@@ -12,18 +12,28 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   session: { strategy: "jwt" },
-  pages: { signIn: "/" },
+  pages: { signIn: "/", error: "/" },
+  logger: {
+    error(code, metadata) {
+      console.error("Auth error:", code, metadata);
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       // First sign-in: make sure the reader has a row, and remember their id.
       if (user?.email) {
-        const [row] = await query<{ id: number }>(
-          `INSERT INTO users (email, name, image) VALUES ($1, $2, $3)
-           ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, image = EXCLUDED.image
-           RETURNING id`,
-          [user.email.toLowerCase(), user.name ?? null, user.image ?? null],
-        );
-        token.userId = row.id;
+        try {
+          const [row] = await query<{ id: number }>(
+            `INSERT INTO users (email, name, image) VALUES ($1, $2, $3)
+             ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, image = EXCLUDED.image
+             RETURNING id`,
+            [user.email.toLowerCase(), user.name ?? null, user.image ?? null],
+          );
+          token.userId = row.id;
+        } catch (err) {
+          console.error("Sign-in: couldn't save the reader to the database", err);
+          throw err;
+        }
       }
       return token;
     },

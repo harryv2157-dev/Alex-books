@@ -7,7 +7,15 @@ import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-export default async function Home() {
+const SIGN_IN_ERRORS: Record<string, string> = {
+  AccessDenied: "That Google account isn't allowed to sign in yet.",
+  Configuration: "Sign-in isn't set up correctly on the server.",
+  OAuthCallback: "Google sign-in didn't complete. Please try again.",
+  Callback: "Signed in with Google, but your shelf couldn't be opened. Please try again.",
+};
+
+export default async function Home({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const { error } = await searchParams;
   const reader = await currentReader();
   if (!reader) {
     return (
@@ -15,6 +23,11 @@ export default async function Home() {
         <div className="landing-card">
           <h1>Alex Books</h1>
           <p>Your own little bookshelf. Log where you got to, jot down what you thought, and look back when you're done.</p>
+          {error ? (
+            <p className="error">
+              {SIGN_IN_ERRORS[error] ?? "Something went wrong signing in."} <span className="muted small">({error})</span>
+            </p>
+          ) : null}
           <SignInButton />
         </div>
       </main>
