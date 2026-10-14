@@ -283,3 +283,7 @@ textarea { resize: vertical; line-height: 1.5; }
   .book-head .progress { width: 100%; }
   .header-right .avatar { display: none; }
 }
+
+.prose-page h2 { margin-top: 8px; }
+.prose-page ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.prose-page a { color: var(--accent); }
