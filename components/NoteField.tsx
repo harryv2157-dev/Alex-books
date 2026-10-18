@@ -13,15 +13,18 @@ export default function NoteField({
   placeholder: string;
   rows?: number;
 }) {
-  const dictation = useDictation((text) => {
-    if (!text) return;
-    onChange(value ? `${value.replace(/\s+$/, "")} ${text}` : text.charAt(0).toUpperCase() + text.slice(1));
-  });
+  const dictation = useDictation(value, onChange);
 
   return (
     <div className="note-field">
       <div className="note-box">
-        <textarea value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} rows={rows} />
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={dictation.listening ? "Listening…" : placeholder}
+          rows={rows}
+          readOnly={dictation.listening}
+        />
         {dictation.supported ? (
           <button
             type="button"
@@ -32,7 +35,6 @@ export default function NoteField({
           </button>
         ) : null}
       </div>
-      {dictation.interim ? <p className="interim">{dictation.interim}…</p> : null}
       {dictation.error ? <p className="error small">{dictation.error}</p> : null}
     </div>
   );
