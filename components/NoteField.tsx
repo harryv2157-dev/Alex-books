@@ -25,15 +25,13 @@ export default function NoteField({
           rows={rows}
           readOnly={dictation.listening}
         />
-        {dictation.supported ? (
-          <button
-            type="button"
-            className={`mic ${dictation.listening ? "mic-on" : ""}`}
-            onClick={dictation.listening ? dictation.stop : dictation.start}
-          >
-            {dictation.listening ? "■ Stop" : "🎙 Speak"}
-          </button>
-        ) : null}
+        <button
+          type="button"
+          className={`mic ${dictation.listening ? "mic-on" : ""}`}
+          onClick={dictation.listening ? dictation.stop : dictation.start}
+        >
+          {dictation.listening ? "■ Stop" : "🎙 Speak"}
+        </button>
       </div>
       {dictation.error ? <p className="error small">{dictation.error}</p> : null}
     </div>

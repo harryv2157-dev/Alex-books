@@ -52,8 +52,18 @@ function joinNote(base: string, spoken: string): string {
 }
 
 // Speak into the phone; the note is rebuilt live (base text + everything heard so far) as words arrive.
+function micHelp(): string {
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua)) {
+    return "Microphone is blocked for this site. In Safari, tap the aA (or ⋯) button in the address bar → Website Settings → Microphone → Allow, then tap Speak again. If you use the home-screen app: Settings → Apps → Safari → Microphone → Allow.";
+  }
+  if (/Android/.test(ua)) {
+    return "Microphone is blocked for this site. In Chrome, tap the icon to the left of the web address → Permissions → Microphone → Allow, then tap Speak again.";
+  }
+  return "Microphone is blocked for this site. Click the icon to the left of the web address, allow the microphone, then try again.";
+}
+
 export function useDictation(value: string, onChange: (text: string) => void) {
-  const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rec = useRef<Recognition | null>(null);
@@ -62,14 +72,28 @@ export function useDictation(value: string, onChange: (text: string) => void) {
   valueRef.current = value;
   onChangeRef.current = onChange;
 
-  useEffect(() => setSupported(getRecognition() !== null), []);
-
   const stop = useCallback(() => rec.current?.stop(), []);
 
-  const start = useCallback(() => {
+  const start = useCallback(async () => {
     const Ctor = getRecognition();
-    if (!Ctor) return;
     setError(null);
+    if (!Ctor) {
+      setError(
+        "Voice notes don't work in this browser. On iPhone use Safari; on Android use Chrome. You can still type your note.",
+      );
+      return;
+    }
+    // Ask for the microphone up front so the browser shows its permission prompt (or tells us it's blocked).
+    if (navigator.mediaDevices?.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        stream.getTracks().forEach((t) => t.stop());
+      } catch (err) {
+        const name = (err as DOMException).name;
+        setError(name === "NotAllowedError" || name === "SecurityError" ? micHelp() : "No microphone was found.");
+        return;
+      }
+    }
     const base = valueRef.current;
     const r = new Ctor();
     r.continuous = true;
@@ -83,7 +107,7 @@ export function useDictation(value: string, onChange: (text: string) => void) {
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        setError("Microphone access was blocked — allow it in your browser settings.");
+        setError(micHelp());
       } else if (e.error !== "no-speech" && e.error !== "aborted") {
         setError("Couldn't hear that — try again.");
       }
@@ -100,5 +124,5 @@ export function useDictation(value: string, onChange: (text: string) => void) {
 
   useEffect(() => () => rec.current?.stop(), []);
 
-  return { supported, listening, error, start, stop };
+  return { listening, error, start, stop };
 }

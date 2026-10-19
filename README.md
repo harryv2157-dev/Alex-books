@@ -17,6 +17,7 @@ Built with Next.js, Postgres and Google sign-in. Each Google account gets its ow
    | `NEXTAUTH_URL` | the domain from step 3, e.g. `https://alex-books-production.up.railway.app` |
    | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | from Google Cloud (below) |
    | `ANTHROPIC_API_KEY` | optional – turns on "Summarise my thoughts" |
+   | `LOVE_NOTE_EMAIL` | optional – the one Google email that sees the private welcome note |
 3. **Settings → Networking → Generate Domain**, port `8080`.
 4. **Google sign-in** – in Google Cloud Console → APIs & Services → Credentials → Create OAuth client ID
    (Web application). Authorised redirect URI: `<NEXTAUTH_URL>/api/auth/callback/google`. While the OAuth

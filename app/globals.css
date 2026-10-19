@@ -286,3 +286,23 @@ textarea { resize: vertical; line-height: 1.5; }
 .prose-page h2 { margin-top: 8px; }
 .prose-page ul { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
 .prose-page a { color: var(--accent); }
+
+/* Private welcome note */
+.love-reopen {
+  display: block; margin: 28px auto 0; background: none; border: none; color: var(--muted);
+  font: italic 0.95rem var(--serif); cursor: pointer;
+}
+.love-reopen:hover { color: var(--accent); }
+.love-note {
+  width: min(100%, 420px); max-height: calc(100dvh - 32px); overflow-y: auto;
+  background: linear-gradient(90deg, #e8dcc6 0%, var(--paper) 6%); color: var(--paper-ink);
+  border-radius: 6px 12px 12px 6px; padding: 28px 24px; display: flex; flex-direction: column; gap: 12px;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.6); animation: lift 0.5s cubic-bezier(.2,.8,.2,1);
+  font-size: 1rem; line-height: 1.6;
+}
+.love-note h2 { font-size: 1.5rem; margin: 0; }
+.love-note h3 { font-family: var(--serif); font-size: 1.05rem; margin: 0 0 6px; }
+.love-heart { color: #c0473a; font-size: 1.8rem; line-height: 1; }
+.love-steps { background: #efe4d0; border-radius: 8px; padding: 14px 16px; margin: 4px 0; }
+.love-steps ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 4px; }
+.love-note .btn { margin-top: 6px; }
