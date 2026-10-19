@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Alex Books",
   description: "A cosy place to track what you're reading.",
-  appleWebApp: { capable: true, title: "Alex Books", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Library", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
