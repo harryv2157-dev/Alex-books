@@ -95,6 +95,15 @@ export async function setCoverPhoto(bookId: number, photo: string) {
   revalidatePath("/");
 }
 
+export async function setBackCoverPhoto(bookId: number, photo: string) {
+  await ownedBookId(bookId);
+  const parsed = parseDataUrl(photo);
+  if (!parsed) throw new Error("That photo couldn't be read");
+  await query(`UPDATE books SET back_data = $2, back_type = $3 WHERE id = $1`, [bookId, parsed.data, parsed.type]);
+  revalidatePath(`/books/${bookId}`);
+  revalidatePath("/");
+}
+
 export async function saveSpineColor(bookId: number, color: string) {
   if (!/^#[0-9a-f]{6}$/i.test(color)) return;
   await ownedBookId(bookId);

@@ -6,6 +6,7 @@ export type Book = {
   author: string | null;
   total_pages: number | null;
   has_cover: boolean;
+  has_back_cover: boolean;
   spine_color: string | null;
   status: "reading" | "finished";
   rating: number | null;
@@ -29,6 +30,7 @@ const BOOK_COLUMNS = `
   b.id, b.title, b.author, b.total_pages, b.spine_color, b.status, b.rating, b.review, b.synthesis,
   b.started_at, b.finished_at,
   (b.cover_data IS NOT NULL OR b.cover_url IS NOT NULL) AS has_cover,
+  (b.back_data IS NOT NULL) AS has_back_cover,
   COALESCE((SELECT MAX(s.page) FROM reading_sessions s WHERE s.book_id = b.id), 0)::int AS current_page,
   (SELECT COUNT(*) FROM reading_sessions s WHERE s.book_id = b.id)::int AS session_count,
   (SELECT s.note FROM reading_sessions s WHERE s.book_id = b.id AND s.note IS NOT NULL

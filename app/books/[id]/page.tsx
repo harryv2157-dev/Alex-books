@@ -8,6 +8,7 @@ import Synthesis from "@/components/Synthesis";
 import SessionList from "@/components/SessionList";
 import BookSettings from "@/components/BookSettings";
 import Stars from "@/components/Stars";
+import BookModel from "@/components/BookModel";
 
 export const dynamic = "force-dynamic";
 
@@ -25,11 +26,7 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
       <Header reader={reader} />
       <main className="page narrow">
         <section className="book-head">
-          {book.has_cover ? (
-            <img src={`/api/cover/${book.id}`} alt="" className="cover-large" />
-          ) : (
-            <div className="cover-large cover-empty">{book.title}</div>
-          )}
+          <BookModel book={{ ...book, color: book.spine_color ?? "#5a3a24" }} owner={reader.name?.split(" ")[0] ?? null} />
           <div className="stack">
             <h1 className="book-title">{book.title}</h1>
             {book.author ? <p className="muted">{book.author}</p> : null}

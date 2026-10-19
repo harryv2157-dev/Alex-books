@@ -6,6 +6,11 @@ import type { Book } from "@/lib/books";
 import { saveSpineColor } from "@/app/actions";
 import { spineColorFrom } from "@/lib/image";
 import Stars from "./Stars";
+import dynamic from "next/dynamic";
+import { webglAvailable, type Book3DInput } from "@/lib/book3d";
+
+const Shelf3D = dynamic(() => import("./Shelf3D"), { ssr: false });
+const BookViewer3D = dynamic(() => import("./BookViewer3D"), { ssr: false });
 
 const FALLBACK_COLORS = ["#7a2e2e", "#2f4a3a", "#2b3f63", "#6b4a1f", "#4b2f5c", "#3d5a5a", "#704050", "#5a5a2a"];
 
@@ -27,11 +32,22 @@ function spineHeight(b: Book) {
   return Math.round(150 + hash(b.id) * 40);
 }
 
-export default function Bookshelf({ books }: { books: Book[] }) {
+export default function Bookshelf({ books, owner }: { books: Book[]; owner?: string | null }) {
   const [colors, setColors] = useState<Record<number, string>>({});
   const [open, setOpen] = useState<Book | null>(null);
   const [rows, setRows] = useState<Book[][]>([books]);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<"loading" | "3d" | "2d">("loading");
+
+  // Use the 3D bookcase when the device can draw it; wait for fonts so spine titles render properly.
+  useEffect(() => {
+    if (!webglAvailable()) return setMode("2d");
+    let live = true;
+    (document.fonts?.ready ?? Promise.resolve()).then(() => live && setMode("3d"));
+    return () => {
+      live = false;
+    };
+  }, []);
 
   // Work out spine colours from cover photos we haven't coloured yet.
   useEffect(() => {
@@ -74,6 +90,17 @@ export default function Bookshelf({ books }: { books: Book[] }) {
   }, [books]);
 
   const colorFor = (b: Book) => b.spine_color ?? colors[b.id] ?? FALLBACK_COLORS[b.id % FALLBACK_COLORS.length];
+
+  if (mode !== "2d") {
+    const inputs: Book3DInput[] = books.map((b) => ({ ...b, color: colorFor(b) }));
+    return (
+      <>
+        <div className="room">{mode === "3d" ? <Shelf3D books={inputs} onOpen={(b) => setOpen(books.find((x) => x.id === b.id) ?? null)} /> : null}</div>
+        <p className="muted small shelf-hint">Tap a book to take it off the shelf</p>
+        {open ? <OpenBook3D book={{ ...open, color: colorFor(open) }} owner={owner ?? null} onClose={() => setOpen(null)} /> : null}
+      </>
+    );
+  }
 
   return (
     <>
@@ -179,6 +206,40 @@ function OpenBook({ book, color, onClose }: { book: Book; color: string; onClose
           <div className="book3d-inside">
             <span>{book.title}</span>
           </div>
+        </div>
+      </div>
+      <button className="overlay-close" onClick={onClose} aria-label="Close">
+        ×
+      </button>
+    </div>
+  );
+}
+
+function OpenBook3D({ book, owner, onClose }: { book: Book3DInput & Book; owner: string | null; onClose: () => void }) {
+  const pct = percent(book);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="overlay overlay-3d" onClick={onClose}>
+      <div className="viewer-stage" onClick={(e) => e.stopPropagation()}>
+        <BookViewer3D book={book} open owner={owner} className="viewer-canvas" />
+        <div className="viewer-card">
+          <h2>{book.title}</h2>
+          <p className="muted small">
+            {book.status === "finished"
+              ? `Finished${book.rating ? ` · ${"★".repeat(book.rating)}` : ""}`
+              : book.total_pages
+                ? `Page ${book.current_page} of ${book.total_pages} · ${pct}%`
+                : `Page ${book.current_page}`}
+          </p>
+          <p className="muted small">Drag to spin · tap the book to open or close it</p>
+          <Link href={`/books/${book.id}`} className="btn btn-primary">
+            {book.status === "finished" ? "See your thoughts" : "Log a session"}
+          </Link>
         </div>
       </div>
       <button className="overlay-close" onClick={onClose} aria-label="Close">

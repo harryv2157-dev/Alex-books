@@ -47,6 +47,8 @@ CREATE TABLE IF NOT EXISTS books (
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS books_user_idx ON books(user_id);
+ALTER TABLE books ADD COLUMN IF NOT EXISTS back_data BYTEA;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS back_type TEXT;
 
 CREATE TABLE IF NOT EXISTS reading_sessions (
   id          SERIAL PRIMARY KEY,

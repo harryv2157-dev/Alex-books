@@ -53,7 +53,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
             </Link>
           </div>
         ) : (
-          <Bookshelf books={books} />
+          <Bookshelf books={books} owner={firstName ?? null} />
         )}
         {loveNote ? <LoveNote message={loveNote.message} unread={!loveNote.seenAt} /> : null}
       </main>

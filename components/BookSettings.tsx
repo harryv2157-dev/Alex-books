@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { deleteBook, reopenBook, setCoverPhoto, updateBookDetails } from "@/app/actions";
+import { deleteBook, reopenBook, setBackCoverPhoto, setCoverPhoto, updateBookDetails } from "@/app/actions";
 import PhotoPicker from "./PhotoPicker";
 
 export default function BookSettings({
@@ -60,6 +60,15 @@ export default function BookSettings({
             start(async () => {
               await setCoverPhoto(bookId, photo);
               setMsg("Cover updated");
+            })
+          }
+        />
+        <PhotoPicker
+          label="Photo of the back"
+          onPicked={(photo) =>
+            start(async () => {
+              await setBackCoverPhoto(bookId, photo);
+              setMsg("Back cover added — spin the book to see it");
             })
           }
         />
