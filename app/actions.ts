@@ -215,6 +215,24 @@ export async function sendLoveNote(message: string, showInstall: boolean) {
   revalidatePath("/");
 }
 
+// Change the note she currently sees. She'll get it again as unread.
+export async function updateCurrentLoveNote(message: string, showInstall: boolean) {
+  const reader = await requireReader();
+  if (!isNoteEditor(reader)) throw new Error("Not allowed");
+  const text = message.trim();
+  if (!text) throw new Error("The note can't be empty");
+  const updated = await query(
+    `UPDATE love_notes SET message = $1, show_install = $2, seen_at = NULL
+     WHERE id = (SELECT id FROM love_notes ORDER BY created_at DESC, id DESC LIMIT 1) RETURNING id`,
+    [text, showInstall],
+  );
+  if (updated.length === 0) {
+    await query(`INSERT INTO love_notes (message, show_install) VALUES ($1, $2)`, [text, showInstall]);
+  }
+  revalidatePath("/note");
+  revalidatePath("/");
+}
+
 export async function markLoveNoteSeen() {
   const reader = await requireReader();
   if (!isNoteRecipient(reader)) return;

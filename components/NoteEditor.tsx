@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { sendLoveNote } from "@/app/actions";
+import { sendLoveNote, updateCurrentLoveNote } from "@/app/actions";
 import type { LoveNote } from "@/lib/loveNote";
 import { LoveNoteCard, NoteMessage, detectPlatform, type Platform } from "./LoveNote";
 
@@ -50,7 +50,11 @@ export default function NoteEditor({ current, history }: { current: LoveNote; hi
   const [showInstall, setShowInstall] = useState(false);
   const [preview, setPreview] = useState<Pick<LoveNote, "message" | "showInstall"> | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(current.message);
+  const [editInstall, setEditInstall] = useState(current.showInstall);
+  const [editError, setEditError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   return (
@@ -60,12 +64,81 @@ export default function NoteEditor({ current, history }: { current: LoveNote; hi
           <h2 style={{ margin: 0 }}>What she sees now</h2>
           <Status note={current} />
         </div>
-        <div className="love-note note-preview">
-          <NoteMessage message={current.message} />
-        </div>
-        <button className="btn" onClick={() => setPreview(current)}>
-          Preview on her phone
-        </button>
+        {editing ? (
+          <div className="form">
+            <label>
+              Edit the message
+              <textarea value={editText} onChange={(e) => setEditText(e.target.value)} rows={8} />
+            </label>
+            <label className="check">
+              <input type="checkbox" checked={editInstall} onChange={(e) => setEditInstall(e.target.checked)} />
+              Include the home-screen steps
+            </label>
+            <div className="love-note note-preview">
+              <NoteMessage message={editText || " "} />
+            </div>
+            {editError ? <p className="error">{editError}</p> : null}
+            <div className="row wrap" style={{ marginTop: 0 }}>
+              <button type="button" className="btn" onClick={() => setPreview({ message: editText, showInstall: editInstall })}>
+                Preview on her phone
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setEditing(false);
+                  setEditText(current.message);
+                  setEditInstall(current.showInstall);
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={pending || !editText.trim()}
+                onClick={() =>
+                  start(async () => {
+                    setEditError(null);
+                    try {
+                      await updateCurrentLoveNote(editText, editInstall);
+                      setEditing(false);
+                      setSent("Saved. She'll see the updated note next time she opens the app.");
+                      setTimeout(() => setSent(null), 5000);
+                    } catch (err) {
+                      setEditError((err as Error).message);
+                    }
+                  })
+                }
+              >
+                {pending ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="love-note note-preview">
+              <NoteMessage message={current.message} />
+            </div>
+            <p className="muted small">{current.showInstall ? "Shows the home-screen steps underneath." : "No home-screen steps."}</p>
+            <div className="row wrap" style={{ marginTop: 0 }}>
+              <button className="btn" onClick={() => setPreview(current)}>
+                Preview on her phone
+              </button>
+              <button
+                className="btn"
+                onClick={() => {
+                  setEditText(current.message);
+                  setEditInstall(current.showInstall);
+                  setEditing(true);
+                }}
+              >
+                Edit this note
+              </button>
+            </div>
+          </>
+        )}
+        {sent ? <p className="sent-msg">{sent}</p> : null}
       </section>
 
       <form
@@ -77,8 +150,8 @@ export default function NoteEditor({ current, history }: { current: LoveNote; hi
             try {
               await sendLoveNote(text, showInstall);
               setText("");
-              setSent(true);
-              setTimeout(() => setSent(false), 4000);
+              setSent("Sent. It'll pop up next time she opens the app.");
+              setTimeout(() => setSent(null), 5000);
             } catch (err) {
               setError((err as Error).message);
             }
@@ -106,7 +179,6 @@ export default function NoteEditor({ current, history }: { current: LoveNote; hi
           </div>
         ) : null}
         {error ? <p className="error">{error}</p> : null}
-        {sent ? <p className="sent-msg">Sent. It&rsquo;ll pop up next time she opens the app.</p> : null}
         <div className="row wrap" style={{ marginTop: 0 }}>
           <button type="button" className="btn" disabled={!text.trim()} onClick={() => setPreview({ message: text, showInstall })}>
             Preview on her phone

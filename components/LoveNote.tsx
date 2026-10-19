@@ -63,25 +63,22 @@ export function LoveNoteCard({
 
       {showInstall && platform !== "installed" ? (
         <div className="love-steps">
-          <h3>Put it on your home screen</h3>
-          {platform === "android" ? (
+          <h3>how to add this as a full screen app on your home screen x</h3>
+          {platform === "ios" ? (
             <ol>
-              <li>Tap the <strong>⋮</strong> menu in the top corner of Chrome.</li>
-              <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
-              <li>Tap <strong>Add</strong>, and it will sit on your phone like any other app.</li>
-            </ol>
-          ) : platform === "ios" ? (
-            <ol>
-              <li>Make sure you&rsquo;re in <strong>Safari</strong>.</li>
+              <li>Open this page in <strong>Safari</strong>.</li>
               <li>Tap the <strong>Share</strong> button (the square with an arrow pointing up).</li>
               <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+              <li>Open it from the new icon and it fills the whole screen like a normal app.</li>
             </ol>
           ) : (
-            <p>
-              Open this page on your phone. On iPhone use Safari&rsquo;s Share button then{" "}
-              <strong>Add to Home Screen</strong>; on Android use Chrome&rsquo;s <strong>⋮</strong> menu then{" "}
-              <strong>Add to Home screen</strong>.
-            </p>
+            <ol>
+              <li>Open this page in <strong>Chrome</strong>.</li>
+              <li>Tap the <strong>⋮</strong> menu (three dots, top right).</li>
+              <li>Tap <strong>Add to Home screen</strong> (it may say <strong>Install app</strong>).</li>
+              <li>Tap <strong>Install</strong> (or <strong>Add</strong>), then confirm.</li>
+              <li>Open it from the new <strong>Library</strong> icon and it fills the whole screen with no browser bar.</li>
+            </ol>
           )}
         </div>
       ) : null}
