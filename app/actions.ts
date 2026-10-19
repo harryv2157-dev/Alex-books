@@ -51,13 +51,15 @@ export async function addBook(input: {
   redirect(`/books/${row.id}`);
 }
 
-export async function logSession(bookId: number, page: number, note: string) {
+export async function logSession(bookId: number, page: number, note: string, minutes: number | null = null) {
   await ownedBookId(bookId);
   if (!Number.isFinite(page) || page < 0) throw new Error("Enter the page you got to");
-  await query(`INSERT INTO reading_sessions (book_id, page, note) VALUES ($1, $2, $3)`, [
+  const mins = minutes && minutes > 0 ? Math.min(24 * 60, Math.round(minutes)) : null;
+  await query(`INSERT INTO reading_sessions (book_id, page, note, minutes) VALUES ($1, $2, $3, $4)`, [
     bookId,
     Math.round(page),
     note.trim() || null,
+    mins,
   ]);
   revalidatePath(`/books/${bookId}`);
   revalidatePath("/");

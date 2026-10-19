@@ -27,7 +27,7 @@ export default function NoteEditor({
       <p className="note-status card">
         <span className={`dot ${seenAt ? "read" : ""}`} />
         {seenAt
-          ? `Alex read it ${when(seenAt)}`
+          ? `Alex acknowledged it ${when(seenAt)}`
           : updatedAt
             ? `Not read yet — it'll pop up next time she opens her shelf`
             : "Not read yet — she'll see it next time she opens her shelf"}

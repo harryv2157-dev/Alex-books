@@ -1,26 +1,23 @@
 import Link from "next/link";
 import type { Reader } from "@/lib/auth";
-import SignOutButton from "./SignOutButton";
+import HeaderMenu from "./HeaderMenu";
 import { isNoteEditor } from "@/lib/loveNote";
 
 export default function Header({ reader }: { reader: Reader }) {
-  const canEditNote = isNoteEditor(reader);
   return (
     <header className="header">
       <Link href="/" className="brand">
-        Alex Books
+        Your Library
       </Link>
       <div className="header-right">
-        {canEditNote ? (
-          <Link href="/note" className="link-btn" aria-label="Edit Alex's note">
-            ♥ Note
-          </Link>
-        ) : null}
         <Link href="/books/new" className="btn btn-primary btn-sm">
           + Add book
         </Link>
-        {reader.image ? <img src={reader.image} alt="" className="avatar" referrerPolicy="no-referrer" /> : null}
-        <SignOutButton />
+        <HeaderMenu
+          name={reader.name}
+          image={reader.image}
+          canEditNote={isNoteEditor(reader)}
+        />
       </div>
     </header>
   );

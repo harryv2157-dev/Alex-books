@@ -24,13 +24,13 @@ const PROP_PAD = 0.035;
 type Row = { books: { book: Book3DInput; x: number }[]; props: { prop: number; x: number }[]; gap: [number, number] };
 type Layout = { rows: Row[]; innerW: number; height: number; pin: { row: number; x: number } };
 
-function layout(books: Book3DInput[], innerW: number): Layout {
+function layout(books: Book3DInput[], innerW: number, minRows: number): Layout {
   const rows: Row[] = [];
   let i = 0;
   let nextProp = 0;
   const left = -innerW / 2 + 0.012;
   const right = innerW / 2 - 0.012;
-  while (i < books.length || rows.length < 2) {
+  while (i < books.length || rows.length < minRows) {
     const r = rows.length;
     const row: Row = { books: [], props: [], gap: [0, 0] };
     // one ornament per shelf, alternating ends
@@ -90,31 +90,57 @@ function woodTexture(repeatX: number, repeatY: number) {
 
 export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpen: (b: Book3DInput) => void }) {
   const wrap = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(0);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const onOpenRef = useRef(onOpen);
   onOpenRef.current = onOpen;
 
   useEffect(() => {
     const el = wrap.current!;
-    let last = 0;
-    const ro = new ResizeObserver(() => {
-      const w = Math.round(el.clientWidth / 40) * 40; // rebuild only on meaningful resizes
-      if (w !== last) setWidth((last = w));
-    });
+    // Rebuild only on meaningful resizes (not the phone's address bar sliding in and out).
+    let timer = 0;
+    const read = () => {
+      const w = el.clientWidth;
+      const h = Math.round(window.innerHeight - (el.getBoundingClientRect().top + window.scrollY));
+      setSize((prev) => (Math.abs(prev.w - w) < 4 && Math.abs(prev.h - h) < 4 ? prev : { w, h }));
+    };
+    const measure = () => {
+      clearTimeout(timer);
+      timer = window.setTimeout(read, 200);
+    };
+    read();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    return () => ro.disconnect();
+    window.addEventListener("orientationchange", measure);
+    window.addEventListener("resize", measure);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("resize", measure);
+      ro.disconnect();
+      window.removeEventListener("orientationchange", measure);
+    };
   }, []);
 
   useEffect(() => {
     const el = wrap.current;
-    if (!el || !width) return;
+    if (!el || !size.w) return;
 
-    const innerW = width < 640 ? 0.74 : width < 1000 ? 1.1 : 1.35;
-    const L = layout(books, innerW);
-    const caseW = innerW + SIDE * 2;
-    const caseH = 0.03 + L.height;
-    const pxHeight = Math.round(Math.min(width * (caseH / caseW) * 1.12, 2400));
+    const width = size.w;
+    // Floating shelves that run off both edges of the screen, filling the whole view.
+    // Zoom so a whole number of shelves exactly fills the screen height.
+    const baseW = width < 640 ? 0.66 : width < 1000 ? 1.0 : 1.35;
+    const pitch = ROW_H + BOARD;
+    const viewH = Math.max(420, size.h);
+    const fitRows = Math.max(2, Math.round((viewH / (width / (baseW + 0.06))) / pitch));
+    const innerW = THREE.MathUtils.clamp((width * (fitRows * pitch + 0.05)) / viewH - 0.06, baseW * 0.75, baseW * 1.35);
+    const viewW = innerW + 0.06;
+    const pxPerM = width / viewW;
+    const L = layout(books, innerW, fitRows);
+    const totalH = L.rows.length * pitch + 0.03 + Math.max(0.05, viewH / pxPerM - L.rows.length * pitch - 0.03);
+    const pxHeight = Math.round(Math.max(viewH, totalH * pxPerM));
     el.style.height = `${pxHeight}px`;
+    const caseW = viewW;
+    const caseH = pxHeight / pxPerM;
+    const boardLen = viewW * 2.2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -126,11 +152,11 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
     el.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(28, el.clientWidth / pxHeight, 0.05, 20);
+    const camera = new THREE.PerspectiveCamera(28, el.clientWidth / pxHeight, 0.05, 30);
     const halfFov = THREE.MathUtils.degToRad(14);
-    const dist = Math.max((caseW * 1.06) / 2 / (Math.tan(halfFov) * camera.aspect), (caseH * 1.06) / 2 / Math.tan(halfFov)) + DEPTH / 2;
+    const dist = viewW / 2 / (Math.tan(halfFov) * camera.aspect) + DEPTH / 2;
     const centre = new THREE.Vector3(0, caseH / 2, 0);
-    camera.position.set(0, caseH / 2 + 0.04, dist);
+    camera.position.set(0, caseH / 2, dist);
     camera.lookAt(centre);
 
     // Lighting: warm room light, a key light for shadows, and a soft fill.
@@ -142,7 +168,7 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.bias = -0.0004;
     key.shadow.normalBias = 0.01;
-    Object.assign(key.shadow.camera, { left: -caseW, right: caseW, top: caseH, bottom: -caseH, near: 0.5, far: 6 });
+    Object.assign(key.shadow.camera, { left: -caseW, right: caseW, top: caseH, bottom: -caseH, near: 0.3, far: 8 });
     scene.add(key, key.target);
     const fill = new THREE.DirectionalLight("#ffe2c0", 0.9);
     fill.position.set(-1.5, caseH * 0.6, 2.5);
@@ -153,13 +179,11 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
     const track = <T extends { dispose(): void }>(x: T) => (disposables.push(x), x);
 
     // The bookcase
-    const wood = track(new THREE.MeshStandardMaterial({ map: track(woodTexture(caseW / 0.6, 1)), roughness: 0.55, metalness: 0.05 }));
-    const woodV = track(new THREE.MeshStandardMaterial({ map: track(woodTexture(caseH / 0.6, 1)), roughness: 0.55, metalness: 0.05 }));
-    (woodV.map as THREE.Texture).rotation = Math.PI / 2;
+    const wood = track(new THREE.MeshStandardMaterial({ map: track(woodTexture(boardLen / 0.6, 1)), roughness: 0.55, metalness: 0.05 }));
     const backTex = track(new THREE.TextureLoader().load("/textures/backpanel.jpg"));
     backTex.colorSpace = THREE.SRGBColorSpace;
     backTex.wrapS = backTex.wrapT = THREE.RepeatWrapping;
-    backTex.repeat.set(caseW / 0.35, caseH / 0.35);
+    backTex.repeat.set((boardLen * 1.6) / 0.35, (caseH * 2) / 0.35);
     const backMat = track(new THREE.MeshStandardMaterial({ map: backTex, roughness: 0.95, color: "#9fb59f" }));
     const box = (w: number, h: number, d: number, mat: THREE.Material, x: number, y: number, z: number) => {
       const m = new THREE.Mesh(track(new THREE.BoxGeometry(w, h, d)), mat);
@@ -168,24 +192,12 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
       scene.add(m);
       return m;
     };
-    box(caseW, caseH, 0.012, backMat, 0, caseH / 2, -DEPTH / 2).receiveShadow = false;
-    box(SIDE, caseH, DEPTH + 0.02, woodV, -caseW / 2 + SIDE / 2, caseH / 2, 0.01);
-    box(SIDE, caseH, DEPTH + 0.02, woodV, caseW / 2 - SIDE / 2, caseH / 2, 0.01);
-    box(caseW + 0.04, 0.035, DEPTH + 0.05, wood, 0, caseH + 0.0175, 0.02); // crown
-    const glow = track(new THREE.MeshBasicMaterial({ color: "#ffcf87", transparent: true, opacity: 0.55 }));
-    for (let r = 0; r <= L.rows.length; r++) {
-      const y = 0.03 + r * (ROW_H + BOARD) + BOARD / 2;
-      box(innerW, BOARD, DEPTH, wood, 0, y, 0);
-      box(innerW, 0.012, 0.012, wood, 0, y + 0.006, DEPTH / 2 + 0.004); // lip
-      if (r > 0) {
-        // a warm strip light tucked under each shelf
-        const strip = new THREE.Mesh(track(new THREE.PlaneGeometry(innerW * 0.94, 0.006)), glow);
-        strip.rotation.x = Math.PI / 2;
-        strip.position.set(0, y - BOARD / 2 - 0.001, DEPTH / 2 - 0.03);
-        scene.add(strip);
-      }
+    box(boardLen * 1.6, caseH * 2, 0.012, backMat, 0, caseH / 2, -DEPTH / 2).receiveShadow = false; // the wall
+    for (let r = 0; r < L.rows.length; r++) {
+      const y = 0.03 + r * pitch + BOARD / 2;
+      box(boardLen, BOARD, DEPTH, wood, 0, y, 0);
+      box(boardLen, 0.012, 0.012, wood, 0, y + 0.006, DEPTH / 2 + 0.004); // lip
     }
-    box(caseW, 0.03, DEPTH + 0.02, wood, 0, 0.015, 0.01); // plinth
 
     // Books
     const shelfY = (r: number) => 0.03 + BOARD + (L.rows.length - 1 - r) * (ROW_H + BOARD);
@@ -223,8 +235,8 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
             });
             scene.add(model);
             if (spec.light) {
-              const lamp = new THREE.PointLight("#ffb860", 0.6, 0.9, 2);
-              lamp.position.set(px, shelfY(r) + spec.height * 0.8, 0.04);
+              const lamp = new THREE.PointLight("#ffb860", 0.35, 0.5, 2);
+              lamp.position.set(px, shelfY(r) + spec.height * 0.6, 0.05);
               scene.add(lamp);
             }
           },
@@ -343,7 +355,7 @@ export default function Shelf3D({ books, onOpen }: { books: Book3DInput[]; onOpe
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [books, width]);
+  }, [books, size]);
 
   return <div ref={wrap} className="shelf3d" />;
 }

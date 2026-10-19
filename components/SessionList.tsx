@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { deleteSession } from "@/app/actions";
 import type { ReadingSession } from "@/lib/books";
+import { formatMinutes } from "@/lib/format";
 
 export default function SessionList({ bookId, sessions }: { bookId: number; sessions: ReadingSession[] }) {
   const [pending, start] = useTransition();
@@ -13,6 +14,12 @@ export default function SessionList({ bookId, sessions }: { bookId: number; sess
         <li key={s.id}>
           <div className="journal-meta">
             <strong>Page {s.page}</strong>
+            {s.pages_read > 0 || s.minutes ? (
+              <span className="pace">
+                {s.pages_read > 0 ? `+${s.pages_read}` : ""}
+                {s.minutes ? `${s.pages_read > 0 ? " in " : ""}${formatMinutes(s.minutes)}` : ""}
+              </span>
+            ) : null}
             <span className="muted small">
               {new Date(s.created_at).toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" })}
             </span>

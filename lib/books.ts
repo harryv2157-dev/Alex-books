@@ -17,6 +17,8 @@ export type Book = {
   current_page: number;
   session_count: number;
   last_note: string | null;
+  total_minutes: number;
+  timed_pages: number;
 };
 
 export type ReadingSession = {
@@ -24,6 +26,9 @@ export type ReadingSession = {
   page: number;
   note: string | null;
   created_at: string;
+  minutes: number | null;
+  // pages read since the session before it
+  pages_read: number;
 };
 
 const BOOK_COLUMNS = `
@@ -34,7 +39,11 @@ const BOOK_COLUMNS = `
   COALESCE((SELECT MAX(s.page) FROM reading_sessions s WHERE s.book_id = b.id), 0)::int AS current_page,
   (SELECT COUNT(*) FROM reading_sessions s WHERE s.book_id = b.id)::int AS session_count,
   (SELECT s.note FROM reading_sessions s WHERE s.book_id = b.id AND s.note IS NOT NULL
-   ORDER BY s.created_at DESC LIMIT 1) AS last_note
+   ORDER BY s.created_at DESC LIMIT 1) AS last_note,
+  COALESCE((SELECT SUM(s.minutes) FROM reading_sessions s WHERE s.book_id = b.id), 0)::int AS total_minutes,
+  COALESCE((SELECT SUM(t.read) FROM (
+    SELECT s.minutes, GREATEST(0, s.page - COALESCE(LAG(s.page) OVER (ORDER BY s.created_at, s.id), 0)) AS read
+    FROM reading_sessions s WHERE s.book_id = b.id) t WHERE t.minutes > 0), 0)::int AS timed_pages
 `;
 
 export function listBooks(userId: number): Promise<Book[]> {
@@ -55,7 +64,9 @@ export async function getBook(userId: number, bookId: number): Promise<Book | nu
 
 export function listSessions(bookId: number): Promise<ReadingSession[]> {
   return query<ReadingSession>(
-    `SELECT id, page, note, created_at FROM reading_sessions WHERE book_id = $1 ORDER BY created_at DESC`,
+    `SELECT id, page, note, created_at, minutes,
+            GREATEST(0, page - COALESCE(LAG(page) OVER (ORDER BY created_at, id), 0))::int AS pages_read
+     FROM reading_sessions WHERE book_id = $1 ORDER BY created_at DESC, id DESC`,
     [bookId],
   );
 }
@@ -65,3 +76,4 @@ export function progressPercent(book: Pick<Book, "current_page" | "total_pages" 
   if (!book.total_pages) return 0;
   return Math.max(0, Math.min(100, Math.round((book.current_page / book.total_pages) * 100)));
 }
+

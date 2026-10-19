@@ -95,15 +95,14 @@ export default function Bookshelf({ books, owner }: { books: Book[]; owner?: str
     const inputs: Book3DInput[] = books.map((b) => ({ ...b, color: colorFor(b) }));
     return (
       <>
-        <div className="room">{mode === "3d" ? <Shelf3D books={inputs} onOpen={(b) => setOpen(books.find((x) => x.id === b.id) ?? null)} /> : null}</div>
-        <p className="muted small shelf-hint">Tap a book to take it off the shelf</p>
+        {mode === "3d" ? <Shelf3D books={inputs} onOpen={(b) => setOpen(books.find((x) => x.id === b.id) ?? null)} /> : <div className="shelf3d-loading" />}
         {open ? <OpenBook3D book={{ ...open, color: colorFor(open) }} owner={owner ?? null} onClose={() => setOpen(null)} /> : null}
       </>
     );
   }
 
   return (
-    <>
+    <div className="page">
       <div className="bookcase" ref={wrapRef}>
         {rows.map((row, i) => (
           <div className="shelf" key={i}>
@@ -134,7 +133,7 @@ export default function Bookshelf({ books, owner }: { books: Book[]; owner?: str
         ))}
       </div>
       {open ? <OpenBook book={open} color={colorFor(open)} onClose={() => setOpen(null)} /> : null}
-    </>
+    </div>
   );
 }
 

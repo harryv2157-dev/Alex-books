@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS reading_sessions (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS sessions_book_idx ON reading_sessions(book_id);
+ALTER TABLE reading_sessions ADD COLUMN IF NOT EXISTS minutes INTEGER;
 
 CREATE TABLE IF NOT EXISTS love_note (
   id          INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),

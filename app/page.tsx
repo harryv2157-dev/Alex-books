@@ -43,10 +43,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
   return (
     <>
       <Header reader={reader} />
-      <main className="page">
-        <h1 className="page-title">{firstName ? `${firstName}'s shelf` : "Your shelf"}</h1>
+      <main className="library">
         {books.length === 0 ? (
-          <div className="empty">
+          <div className="empty page">
             <p>Your shelf is empty. Add the book you're reading now to get started.</p>
             <Link href="/books/new" className="btn btn-primary">
               Add your first book

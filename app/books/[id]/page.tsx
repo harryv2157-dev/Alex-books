@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { requireReader } from "@/lib/auth";
 import { getBook, listSessions, progressPercent } from "@/lib/books";
+import { formatMinutes } from "@/lib/format";
 import Header from "@/components/Header";
 import LogSession from "@/components/LogSession";
 import FinishBook from "@/components/FinishBook";
@@ -30,6 +31,14 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
           <div className="stack">
             <h1 className="book-title">{book.title}</h1>
             {book.author ? <p className="muted">{book.author}</p> : null}
+            {book.total_minutes > 0 ? (
+              <p className="book-stats">
+                {formatMinutes(book.total_minutes)} of reading
+                {book.timed_pages > 0
+                  ? ` · about ${Math.round((book.timed_pages / book.total_minutes) * 60)} pages an hour`
+                  : ""}
+              </p>
+            ) : null}
             {finished ? (
               <>
                 <p className="finished-label">
@@ -37,18 +46,7 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
                 </p>
                 {book.rating ? <Stars value={book.rating} /> : null}
               </>
-            ) : (
-              <>
-                <div className="progress">
-                  <div className="progress-fill" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="progress-label">
-                  {book.total_pages
-                    ? `Page ${book.current_page} of ${book.total_pages} · ${pct}%`
-                    : `Page ${book.current_page} · add the page count to see your progress`}
-                </p>
-              </>
-            )}
+            ) : null}
           </div>
         </section>
 
@@ -65,10 +63,7 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
           </>
         ) : (
           <>
-            <section className="card">
-              <h2>Log a reading session</h2>
-              <LogSession bookId={book.id} currentPage={book.current_page} totalPages={book.total_pages} />
-            </section>
+            <LogSession bookId={book.id} currentPage={book.current_page} totalPages={book.total_pages} />
           </>
         )}
 

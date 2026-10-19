@@ -61,9 +61,6 @@ export default function LoveNote({ message, unread }: { message: string; unread:
 
   return (
     <>
-      <button className="love-reopen" onClick={() => setOpen(true)}>
-        A note for you ♥
-      </button>
       {open ? (
         <div className="overlay" onClick={close}>
           <div className="love-note" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="A note for you">
@@ -95,7 +92,7 @@ export default function LoveNote({ message, unread }: { message: string; unread:
             ) : null}
 
             <button className="btn btn-primary" onClick={close}>
-              Take me to my books
+              Acknowledge
             </button>
           </div>
         </div>
