@@ -66,6 +66,17 @@ CREATE TABLE IF NOT EXISTS love_note (
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   seen_at     TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS love_notes (
+  id            SERIAL PRIMARY KEY,
+  message       TEXT NOT NULL,
+  show_install  BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  seen_at       TIMESTAMPTZ
+);
+INSERT INTO love_notes (message, show_install, created_at, seen_at)
+  SELECT message, true, updated_at, CASE WHEN seen_at >= updated_at THEN seen_at END FROM love_note
+  WHERE NOT EXISTS (SELECT 1 FROM love_notes);
 `;
 
 function ready(): Promise<void> {

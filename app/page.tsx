@@ -54,7 +54,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         ) : (
           <Bookshelf books={books} owner={firstName ?? null} />
         )}
-        {loveNote ? <LoveNote message={loveNote.message} unread={!loveNote.seenAt} /> : null}
+        {loveNote ? <LoveNote message={loveNote.message} showInstall={loveNote.showInstall} unread={!loveNote.seenAt} /> : null}
       </main>
     </>
   );

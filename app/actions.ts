@@ -205,16 +205,12 @@ export async function synthesizeThoughts(bookId: number): Promise<{ ok: true } |
   }
 }
 
-export async function saveLoveNote(message: string) {
+export async function sendLoveNote(message: string, showInstall: boolean) {
   const reader = await requireReader();
   if (!isNoteEditor(reader)) throw new Error("Not allowed");
   const text = message.trim();
   if (!text) throw new Error("The note can't be empty");
-  await query(
-    `INSERT INTO love_note (id, message, updated_at, seen_at) VALUES (1, $1, now(), NULL)
-     ON CONFLICT (id) DO UPDATE SET message = EXCLUDED.message, updated_at = now(), seen_at = NULL`,
-    [text],
-  );
+  await query(`INSERT INTO love_notes (message, show_install) VALUES ($1, $2)`, [text, showInstall]);
   revalidatePath("/note");
   revalidatePath("/");
 }
@@ -222,10 +218,18 @@ export async function saveLoveNote(message: string) {
 export async function markLoveNoteSeen() {
   const reader = await requireReader();
   if (!isNoteRecipient(reader)) return;
-  // Create the row from the default message the first time she reads it, so "seen" sticks.
-  await query(
-    `INSERT INTO love_note (id, message, seen_at) VALUES (1, $1, now())
-     ON CONFLICT (id) DO UPDATE SET seen_at = now()`,
-    [DEFAULT_LOVE_NOTE],
+  const updated = await query(
+    `UPDATE love_notes SET seen_at = now()
+     WHERE id = (SELECT id FROM love_notes ORDER BY created_at DESC, id DESC LIMIT 1) AND seen_at IS NULL
+     RETURNING id`,
   );
+  // She read the built-in first note before any was saved: record it so it doesn't pop up again.
+  if (updated.length === 0) {
+    await query(
+      `INSERT INTO love_notes (message, show_install, seen_at)
+       SELECT $1, true, now() WHERE NOT EXISTS (SELECT 1 FROM love_notes)`,
+      [DEFAULT_LOVE_NOTE],
+    );
+  }
+  revalidatePath("/note");
 }

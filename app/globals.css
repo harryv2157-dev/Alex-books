@@ -399,3 +399,16 @@ textarea { resize: vertical; line-height: 1.5; }
 .journal-meta .pace { color: var(--accent); font-size: 0.85rem; }
 .book-stats { color: var(--muted); font-size: 0.9rem; }
 @media (prefers-reduced-motion: reduce) { .jl-wave.on span { animation: none; height: 16px; } }
+
+/* Note editor */
+.check { flex-direction: row; align-items: center; gap: 10px; font-weight: 400; }
+.check input { width: 20px; height: 20px; accent-color: var(--accent); }
+.sent-msg { color: #6fbf73; font-weight: 600; }
+.preview-overlay { flex-direction: column; display: flex; align-items: center; justify-content: center; gap: 14px; }
+.preview-bar {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px;
+  background: rgba(47,36,28,0.95); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; font-size: 0.9rem;
+}
+.seg { display: flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { background: none; border: none; color: var(--muted); padding: 8px 12px; font: 500 0.85rem var(--sans); cursor: pointer; }
+.seg button.on { background: var(--accent); color: var(--accent-ink); }

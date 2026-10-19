@@ -3,9 +3,9 @@
 import { useEffect, useState } from "react";
 import { markLoveNoteSeen } from "@/app/actions";
 
-type Platform = "ios" | "android" | "installed" | "other";
+export type Platform = "ios" | "android" | "installed" | "other";
 
-function detectPlatform(): Platform {
+export function detectPlatform(): Platform {
   const standalone =
     window.matchMedia("(display-mode: standalone)").matches ||
     (navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -45,7 +45,55 @@ export function NoteMessage({ message }: { message: string }) {
   );
 }
 
-export default function LoveNote({ message, unread }: { message: string; unread: boolean }) {
+// The note card exactly as Alex sees it. Used for the real pop-up and for Harry's preview.
+export function LoveNoteCard({
+  message,
+  showInstall,
+  platform,
+  onAcknowledge,
+}: {
+  message: string;
+  showInstall: boolean;
+  platform: Platform;
+  onAcknowledge: () => void;
+}) {
+  return (
+    <div className="love-note" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="A note for you">
+      <NoteMessage message={message} />
+
+      {showInstall && platform !== "installed" ? (
+        <div className="love-steps">
+          <h3>Put it on your home screen</h3>
+          {platform === "android" ? (
+            <ol>
+              <li>Tap the <strong>⋮</strong> menu in the top corner of Chrome.</li>
+              <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
+              <li>Tap <strong>Add</strong>, and it will sit on your phone like any other app.</li>
+            </ol>
+          ) : platform === "ios" ? (
+            <ol>
+              <li>Make sure you&rsquo;re in <strong>Safari</strong>.</li>
+              <li>Tap the <strong>Share</strong> button (the square with an arrow pointing up).</li>
+              <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
+            </ol>
+          ) : (
+            <p>
+              Open this page on your phone. On iPhone use Safari&rsquo;s Share button then{" "}
+              <strong>Add to Home Screen</strong>; on Android use Chrome&rsquo;s <strong>⋮</strong> menu then{" "}
+              <strong>Add to Home screen</strong>.
+            </p>
+          )}
+        </div>
+      ) : null}
+
+      <button className="btn btn-primary" onClick={onAcknowledge}>
+        Acknowledge
+      </button>
+    </div>
+  );
+}
+
+export default function LoveNote({ message, showInstall, unread }: { message: string; showInstall: boolean; unread: boolean }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>("other");
 
@@ -59,44 +107,10 @@ export default function LoveNote({ message, unread }: { message: string; unread:
     markLoveNoteSeen().catch(() => {});
   };
 
+  if (!open) return null;
   return (
-    <>
-      {open ? (
-        <div className="overlay" onClick={close}>
-          <div className="love-note" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="A note for you">
-            <NoteMessage message={message} />
-
-            {platform !== "installed" ? (
-              <div className="love-steps">
-                <h3>Put it on your home screen</h3>
-                {platform === "android" ? (
-                  <ol>
-                    <li>Tap the <strong>⋮</strong> menu in the top corner of Chrome.</li>
-                    <li>Tap <strong>Add to Home screen</strong> (or <strong>Install app</strong>).</li>
-                    <li>Tap <strong>Add</strong>, and it will sit on your phone like any other app.</li>
-                  </ol>
-                ) : platform === "ios" ? (
-                  <ol>
-                    <li>Make sure you&rsquo;re in <strong>Safari</strong>.</li>
-                    <li>Tap the <strong>Share</strong> button (the square with an arrow pointing up).</li>
-                    <li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li>
-                  </ol>
-                ) : (
-                  <p>
-                    Open this page on your phone. On iPhone use Safari&rsquo;s Share button then{" "}
-                    <strong>Add to Home Screen</strong>; on Android use Chrome&rsquo;s <strong>⋮</strong> menu then{" "}
-                    <strong>Add to Home screen</strong>.
-                  </p>
-                )}
-              </div>
-            ) : null}
-
-            <button className="btn btn-primary" onClick={close}>
-              Acknowledge
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </>
+    <div className="overlay" onClick={close}>
+      <LoveNoteCard message={message} showInstall={showInstall} platform={platform} onAcknowledge={close} />
+    </div>
   );
 }

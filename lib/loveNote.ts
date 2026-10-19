@@ -8,10 +8,11 @@ updated the voice recording so let me know if it works.
 
 miss you x :)`;
 
-export type LoveNoteState = {
+export type LoveNote = {
+  id: number | null; // null = the built-in first note, not saved yet
   message: string;
-  updatedAt: string | null;
-  // When she last closed the note, if that was after the latest edit.
+  showInstall: boolean;
+  createdAt: string | null;
   seenAt: string | null;
 };
 
@@ -26,11 +27,22 @@ export const emailsFrom = (name: string): string[] =>
 export const isNoteRecipient = (reader: Reader) => emailsFrom("LOVE_NOTE_EMAIL").includes(reader.email.toLowerCase());
 export const isNoteEditor = (reader: Reader) => emailsFrom("LOVE_NOTE_EDITOR_EMAIL").includes(reader.email.toLowerCase());
 
-export async function getLoveNote(): Promise<LoveNoteState> {
-  const [row] = await query<{ message: string; updated_at: Date; seen_at: Date | null }>(
-    `SELECT message, updated_at, seen_at FROM love_note WHERE id = 1`,
-  );
-  if (!row) return { message: DEFAULT_LOVE_NOTE, updatedAt: null, seenAt: null };
-  const seen = row.seen_at && row.seen_at >= row.updated_at ? row.seen_at.toISOString() : null;
-  return { message: row.message, updatedAt: row.updated_at.toISOString(), seenAt: seen };
+type Row = { id: number; message: string; show_install: boolean; created_at: Date; seen_at: Date | null };
+const toNote = (r: Row): LoveNote => ({
+  id: r.id,
+  message: r.message,
+  showInstall: r.show_install,
+  createdAt: r.created_at.toISOString(),
+  seenAt: r.seen_at ? r.seen_at.toISOString() : null,
+});
+
+// The note she sees is always the newest one.
+export async function getLoveNote(): Promise<LoveNote> {
+  const [row] = await query<Row>(`SELECT * FROM love_notes ORDER BY created_at DESC, id DESC LIMIT 1`);
+  return row ? toNote(row) : { id: null, message: DEFAULT_LOVE_NOTE, showInstall: true, createdAt: null, seenAt: null };
+}
+
+export async function listLoveNotes(): Promise<LoveNote[]> {
+  const rows = await query<Row>(`SELECT * FROM love_notes ORDER BY created_at DESC, id DESC LIMIT 30`);
+  return rows.map(toNote);
 }
