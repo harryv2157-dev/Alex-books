@@ -90,18 +90,31 @@ export function LoveNoteCard({
   );
 }
 
-export default function LoveNote({ message, showInstall, unread }: { message: string; showInstall: boolean; unread: boolean }) {
+export default function LoveNote({
+  message,
+  showInstall,
+  unread,
+  onDone,
+}: {
+  message: string;
+  showInstall: boolean;
+  unread: boolean;
+  onDone?: () => void;
+}) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>("other");
 
   useEffect(() => {
     setPlatform(detectPlatform());
     if (unread) setOpen(true);
+    else onDone?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [unread]);
 
   const close = () => {
     setOpen(false);
     markLoveNoteSeen().catch(() => {});
+    onDone?.();
   };
 
   if (!open) return null;

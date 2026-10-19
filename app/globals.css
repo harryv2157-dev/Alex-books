@@ -478,3 +478,11 @@ textarea { resize: vertical; line-height: 1.5; }
 .invite input { flex: 1; min-width: 0; font-size: 0.9rem; }
 .wrapped-fav .stars { color: var(--accent); letter-spacing: 2px; font-size: 1.3rem; }
 .journal-log > .jl-save, .journal-log > .jl-redo { flex: none; }
+.news-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.news-list li { display: flex; flex-direction: column; gap: 2px; padding-left: 14px; border-left: 3px solid #e6c48f; }
+.news-list strong { font-family: var(--serif); font-size: 1.05rem; }
+.news-list span { color: #5c4d3c; font-size: 0.95rem; line-height: 1.45; }
+.readers { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.readers li { display: flex; align-items: center; gap: 8px; }
+.readers .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+.readers .dot.read { background: #6fbf73; }

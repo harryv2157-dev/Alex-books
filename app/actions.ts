@@ -288,3 +288,9 @@ export async function leaveBuddyRead(bookId: number) {
   await query(`DELETE FROM buddy_members WHERE user_id = $1 AND book_id = $2`, [reader.id, bookId]);
   revalidatePath(`/books/${bookId}`);
 }
+
+export async function markAnnouncementRead(key: string) {
+  const reader = await requireReader();
+  await query(`INSERT INTO announcement_reads (user_id, key) VALUES ($1, $2) ON CONFLICT DO NOTHING`, [reader.id, key]);
+  revalidatePath("/note");
+}

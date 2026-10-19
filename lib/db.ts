@@ -87,6 +87,13 @@ CREATE TABLE IF NOT EXISTS buddy_members (
   PRIMARY KEY (buddy_id, user_id)
 );
 
+CREATE TABLE IF NOT EXISTS announcement_reads (
+  user_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  key      TEXT NOT NULL,
+  read_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, key)
+);
+
 CREATE TABLE IF NOT EXISTS year_reviews (
   user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   year        INTEGER NOT NULL,
