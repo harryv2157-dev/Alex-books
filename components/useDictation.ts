@@ -52,15 +52,34 @@ function joinNote(base: string, spoken: string): string {
 }
 
 // Speak into the phone; the note is rebuilt live (base text + everything heard so far) as words arrive.
-function micHelp(): string {
-  const ua = navigator.userAgent;
-  if (/iPhone|iPad|iPod/.test(ua)) {
-    return "Microphone is blocked for this site. In Safari, tap the aA (or ⋯) button in the address bar → Website Settings → Microphone → Allow, then tap Speak again. If you use the home-screen app: Settings → Apps → Safari → Microphone → Allow.";
+const isIOS = () => typeof navigator !== "undefined" && /iPhone|iPad|iPod/.test(navigator.userAgent);
+const isAndroid = () => typeof navigator !== "undefined" && /Android/.test(navigator.userAgent);
+const standalone = () =>
+  typeof window !== "undefined" &&
+  (window.matchMedia("(display-mode: standalone)").matches || (navigator as Navigator & { standalone?: boolean }).standalone === true);
+
+function blockedHelp(): string {
+  if (isIOS()) {
+    return standalone()
+      ? "Microphone is blocked for this app. Open iPhone Settings → Apps → Safari → Microphone → Allow (or Ask), then tap Speak again."
+      : "Microphone is blocked for this site. In Safari, tap the aA button in the address bar → Website Settings → Microphone → Allow, then tap Speak again.";
   }
-  if (/Android/.test(ua)) {
-    return "Microphone is blocked for this site. In Chrome, tap the icon to the left of the web address → Permissions → Microphone → Allow, then tap Speak again.";
+  if (isAndroid()) {
+    return "Microphone is blocked for this site. In Chrome, tap the icon to the left of the web address → Permissions → Microphone → Allow, then tap Speak again. If that's already on, check Android Settings → Apps → Chrome → Permissions → Microphone.";
   }
   return "Microphone is blocked for this site. Click the icon to the left of the web address, allow the microphone, then try again.";
+}
+
+// Explains a "not allowed" error: a real block in settings, or (on iPhone) Dictation being switched off.
+async function notAllowedHelp(code: string): Promise<string> {
+  if (code === "service-not-allowed" && isIOS()) {
+    return "Voice notes need iPhone Dictation. Turn it on in Settings → General → Keyboard → Enable Dictation, then tap Speak again.";
+  }
+  try {
+    const status = await navigator.permissions?.query({ name: "microphone" as PermissionName });
+    if (status && status.state !== "denied") return "The phone didn't let the microphone start. Tap Speak again and choose Allow if asked.";
+  } catch {}
+  return blockedHelp();
 }
 
 export function useDictation(value: string, onChange: (text: string) => void) {
@@ -74,25 +93,18 @@ export function useDictation(value: string, onChange: (text: string) => void) {
 
   const stop = useCallback(() => rec.current?.stop(), []);
 
-  const start = useCallback(async () => {
+  // Must stay synchronous: phones only let listening start directly from the tap, and starting it
+  // is what makes the browser show its microphone permission prompt.
+  const start = useCallback(() => {
     const Ctor = getRecognition();
     setError(null);
     if (!Ctor) {
       setError(
-        "Voice notes don't work in this browser. On iPhone use Safari; on Android use Chrome. You can still type your note.",
+        isIOS() && standalone()
+          ? "Voice notes don't work from the home-screen app on this iPhone. Open the site in Safari to talk, or type your note."
+          : "Voice notes don't work in this browser. On iPhone use Safari; on Android use Chrome. You can still type your note.",
       );
       return;
-    }
-    // Ask for the microphone up front so the browser shows its permission prompt (or tells us it's blocked).
-    if (navigator.mediaDevices?.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        stream.getTracks().forEach((t) => t.stop());
-      } catch (err) {
-        const name = (err as DOMException).name;
-        setError(name === "NotAllowedError" || name === "SecurityError" ? micHelp() : "No microphone was found.");
-        return;
-      }
     }
     const base = valueRef.current;
     const r = new Ctor();
@@ -107,9 +119,13 @@ export function useDictation(value: string, onChange: (text: string) => void) {
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        setError(micHelp());
+        notAllowedHelp(e.error).then(setError);
+      } else if (e.error === "audio-capture") {
+        setError("No microphone could be used. Is another app (like a call) using it?");
+      } else if (e.error === "network") {
+        setError("Voice notes need an internet connection. Check you're online and try again.");
       } else if (e.error !== "no-speech" && e.error !== "aborted") {
-        setError("Couldn't hear that — try again.");
+        setError("Couldn't hear that. Try again.");
       }
     };
     r.onend = () => setListening(false);
@@ -118,7 +134,7 @@ export function useDictation(value: string, onChange: (text: string) => void) {
       r.start();
       setListening(true);
     } catch {
-      setError("Voice notes couldn't start — try again.");
+      setError("Voice notes couldn't start. Try again.");
     }
   }, []);
 
