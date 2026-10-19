@@ -1,4 +1,5 @@
 import { query } from "@/lib/db";
+import { emailsFrom } from "@/lib/loveNote";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,11 @@ export async function GET() {
       (k) => [k, Boolean(process.env[k])],
     ),
   );
+  // How many valid emails each love-note setting holds (never the emails themselves).
+  const loveNote = {
+    LOVE_NOTE_EMAIL: emailsFrom("LOVE_NOTE_EMAIL").length,
+    LOVE_NOTE_EDITOR_EMAIL: emailsFrom("LOVE_NOTE_EDITOR_EMAIL").length,
+  };
   let database = "ok";
   try {
     await query("SELECT 1");
@@ -16,5 +22,5 @@ export async function GET() {
     console.error("Health check: database error", err);
     database = (err as Error).message.replace(/postgres(ql)?:\/\/[^\s]+/g, "[db url]");
   }
-  return Response.json({ env, database }, { status: database === "ok" ? 200 : 500 });
+  return Response.json({ env, loveNote, database }, { status: database === "ok" ? 200 : 500 });
 }

@@ -15,11 +15,16 @@ export type LoveNoteState = {
   seenAt: string | null;
 };
 
-const email = (name: string) => process.env[name]?.trim().toLowerCase() || null;
+// Tolerates stray quotes, spaces, capitals and comma-separated lists in the Railway setting.
+export const emailsFrom = (name: string): string[] =>
+  (process.env[name] ?? "")
+    .split(/[,;\s]+/)
+    .map((e) => e.replace(/^["'<]+|["'>]+$/g, "").trim().toLowerCase())
+    .filter((e) => e.includes("@"));
 
-// The one reader who sees the note (LOVE_NOTE_EMAIL) and the one who can edit it (LOVE_NOTE_EDITOR_EMAIL).
-export const isNoteRecipient = (reader: Reader) => reader.email.toLowerCase() === email("LOVE_NOTE_EMAIL");
-export const isNoteEditor = (reader: Reader) => reader.email.toLowerCase() === email("LOVE_NOTE_EDITOR_EMAIL");
+// The reader who sees the note (LOVE_NOTE_EMAIL) and the one who can edit it (LOVE_NOTE_EDITOR_EMAIL).
+export const isNoteRecipient = (reader: Reader) => emailsFrom("LOVE_NOTE_EMAIL").includes(reader.email.toLowerCase());
+export const isNoteEditor = (reader: Reader) => emailsFrom("LOVE_NOTE_EDITOR_EMAIL").includes(reader.email.toLowerCase());
 
 export async function getLoveNote(): Promise<LoveNoteState> {
   const [row] = await query<{ message: string; updated_at: Date; seen_at: Date | null }>(
