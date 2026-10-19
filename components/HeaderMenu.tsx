@@ -6,10 +6,12 @@ import { useEffect, useRef, useState } from "react";
 
 export default function HeaderMenu({
   name,
+  email,
   image,
   canEditNote,
 }: {
   name: string | null;
+  email: string;
   image: string | null;
   canEditNote: boolean;
 }) {
@@ -41,7 +43,10 @@ export default function HeaderMenu({
         <div className="menu-panel" role="menu">
           <div className="menu-who">
             {image ? <img src={image} alt="" className="avatar" referrerPolicy="no-referrer" /> : null}
-            <span>{name ?? "Signed in"}</span>
+            <span className="menu-who-text">
+              <span>{name ?? "Signed in"}</span>
+              <small>{email}</small>
+            </span>
           </div>
           {canEditNote ? (
             <Link role="menuitem" className="menu-item" href="/note" onClick={() => setOpen(false)}>

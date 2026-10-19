@@ -15,6 +15,7 @@ export default function Header({ reader }: { reader: Reader }) {
         </Link>
         <HeaderMenu
           name={reader.name}
+          email={reader.email}
           image={reader.image}
           canEditNote={isNoteEditor(reader)}
         />
