@@ -1,11 +1,13 @@
 "use server";
 
-import Anthropic from "@anthropic-ai/sdk";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireReader } from "@/lib/auth";
 import { getBook, listSessions } from "@/lib/books";
 import { query } from "@/lib/db";
+import { askText } from "@/lib/claude";
+import { canStartBuddyReads } from "@/lib/buddy";
+import { randomBytes } from "crypto";
 import { DEFAULT_LOVE_NOTE, isNoteEditor, isNoteRecipient } from "@/lib/loveNote";
 
 function parseDataUrl(dataUrl: string | null | undefined): { type: string; data: Buffer } | null {
@@ -141,9 +143,6 @@ export async function synthesizeThoughts(bookId: number): Promise<{ ok: true } |
   const reader = await requireReader();
   const book = await getBook(reader.id, bookId);
   if (!book) return { ok: false, error: "Book not found" };
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return { ok: false, error: "The AI summary isn't switched on yet (no ANTHROPIC_API_KEY on the server)." };
-  }
   const sessions = (await listSessions(bookId)).reverse();
   const notes = sessions.filter((s) => s.note);
   if (notes.length === 0 && !book.review) {
@@ -163,46 +162,19 @@ export async function synthesizeThoughts(bookId: number): Promise<{ ok: true } |
     .filter(Boolean)
     .join("\n\n");
 
-  const client = new Anthropic();
-  try {
-    const response = await client.beta.messages.create({
-      model: "claude-opus-5-5",
-      max_tokens: 16000,
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      system:
-        "You help a reader look back on a book they've read. Using only their own notes and review, write a warm, " +
-        "personal synthesis of what they thought and felt as the book went on: how their views shifted, the moments " +
-        "that stood out, and where they landed. Write in second person (\"you\"), in 2-4 short paragraphs of plain " +
-        "prose with no headings. Don't invent plot details or opinions they didn't express, and don't spoil anything " +
-        "beyond what their notes already mention.",
-      messages: [{ role: "user", content: prompt }],
-    });
-    if (response.stop_reason === "refusal") {
-      return { ok: false, error: "Claude couldn't write a summary for this one." };
-    }
-    const text = response.content
-      .map((b) => (b.type === "text" ? b.text : ""))
-      .join("")
-      .trim();
-    if (!text) return { ok: false, error: "The summary came back empty — try again." };
-    await query(`UPDATE books SET synthesis = $2 WHERE id = $1`, [bookId, text]);
-    revalidatePath(`/books/${bookId}`);
-    return { ok: true };
-  } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError) {
-      return { ok: false, error: "The Claude API key on the server was rejected." };
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return { ok: false, error: "Claude is busy right now — try again in a minute." };
-    }
-    if (err instanceof Anthropic.APIError) {
-      return { ok: false, error: `Claude returned an error (${err.status ?? "network"}).` };
-    }
-    throw err;
-  }
+  const res = await askText({
+    system:
+      "You help a reader look back on a book they've read. Using only their own notes and review, write a warm, " +
+      "personal synthesis of what they thought and felt as the book went on: how their views shifted, the moments " +
+      "that stood out, and where they landed. Write in second person (\"you\"), in 2-4 short paragraphs of plain " +
+      "prose with no headings. Don't invent plot details or opinions they didn't express, and don't spoil anything " +
+      "beyond what their notes already mention.",
+    prompt,
+  });
+  if (!res.ok) return res;
+  await query(`UPDATE books SET synthesis = $2 WHERE id = $1`, [bookId, res.value]);
+  revalidatePath(`/books/${bookId}`);
+  return { ok: true };
 }
 
 export async function sendLoveNote(message: string, showInstall: boolean) {
@@ -250,4 +222,69 @@ export async function markLoveNoteSeen() {
     );
   }
   revalidatePath("/note");
+}
+
+// ---------- Buddy reads ----------
+
+export async function startBuddyRead(bookId: number): Promise<string> {
+  const reader = await requireReader();
+  if (!canStartBuddyReads(reader)) throw new Error("Buddy reads aren't switched on for your account");
+  const book = await getBook(reader.id, bookId);
+  if (!book) throw new Error("Book not found");
+  const [existing] = await query<{ code: string }>(
+    `SELECT r.code FROM buddy_members m JOIN buddy_reads r ON r.id = m.buddy_id WHERE m.user_id = $1 AND m.book_id = $2`,
+    [reader.id, bookId],
+  );
+  if (existing) return existing.code;
+  const [src] = await query<{ cover_url: string | null }>(`SELECT cover_url FROM books WHERE id = $1`, [bookId]);
+  const code = randomBytes(6).toString("base64url");
+  const [row] = await query<{ id: number }>(
+    `INSERT INTO buddy_reads (code, title, author, total_pages, cover_url, created_by) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+    [code, book.title, book.author, book.total_pages, src?.cover_url ?? null, reader.id],
+  );
+  await query(`INSERT INTO buddy_members (buddy_id, user_id, book_id) VALUES ($1, $2, $3)`, [row.id, reader.id, bookId]);
+  revalidatePath(`/books/${bookId}`);
+  return code;
+}
+
+export async function joinBuddyRead(code: string) {
+  const reader = await requireReader();
+  const [read] = await query<{ id: number; title: string; author: string | null; total_pages: number | null; cover_url: string | null }>(
+    `SELECT id, title, author, total_pages, cover_url FROM buddy_reads WHERE code = $1`,
+    [code],
+  );
+  if (!read) throw new Error("That invite link isn't valid any more");
+  const [member] = await query<{ book_id: number }>(`SELECT book_id FROM buddy_members WHERE buddy_id = $1 AND user_id = $2`, [
+    read.id,
+    reader.id,
+  ]);
+  let bookId = member?.book_id;
+  if (!bookId) {
+    // Use the copy already on their shelf, or put the book there.
+    const [own] = await query<{ id: number }>(
+      `SELECT id FROM books WHERE user_id = $1 AND lower(title) = lower($2) ORDER BY created_at DESC LIMIT 1`,
+      [reader.id, read.title],
+    );
+    bookId =
+      own?.id ??
+      (
+        await query<{ id: number }>(
+          `INSERT INTO books (user_id, title, author, total_pages, cover_url) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+          [reader.id, read.title, read.author, read.total_pages, read.cover_url],
+        )
+      )[0].id;
+    await query(`INSERT INTO buddy_members (buddy_id, user_id, book_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, [
+      read.id,
+      reader.id,
+      bookId,
+    ]);
+  }
+  revalidatePath("/");
+  redirect(`/books/${bookId}`);
+}
+
+export async function leaveBuddyRead(bookId: number) {
+  const reader = await requireReader();
+  await query(`DELETE FROM buddy_members WHERE user_id = $1 AND book_id = $2`, [reader.id, bookId]);
+  revalidatePath(`/books/${bookId}`);
 }

@@ -45,7 +45,7 @@ export function joinPhrases(phrases: string[]): string {
   return out.join(" ");
 }
 
-function joinNote(base: string, spoken: string): string {
+export function joinNote(base: string, spoken: string): string {
   if (!spoken) return base;
   if (!base.trim()) return spoken.charAt(0).toUpperCase() + spoken.slice(1);
   return `${base.replace(/\s+$/, "")} ${spoken}`;
@@ -82,14 +82,20 @@ async function notAllowedHelp(code: string): Promise<string> {
   return blockedHelp();
 }
 
-export function useDictation(value: string, onChange: (text: string) => void) {
+export function useDictation(
+  value: string,
+  onChange: (text: string) => void,
+  onFinish?: (base: string, spoken: string) => void,
+) {
   const [listening, setListening] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const rec = useRef<Recognition | null>(null);
   const valueRef = useRef(value);
   const onChangeRef = useRef(onChange);
+  const onFinishRef = useRef(onFinish);
   valueRef.current = value;
   onChangeRef.current = onChange;
+  onFinishRef.current = onFinish;
 
   const stop = useCallback(() => rec.current?.stop(), []);
 
@@ -107,6 +113,7 @@ export function useDictation(value: string, onChange: (text: string) => void) {
       return;
     }
     const base = valueRef.current;
+    let spoken = "";
     const r = new Ctor();
     r.continuous = true;
     r.interimResults = true;
@@ -115,7 +122,8 @@ export function useDictation(value: string, onChange: (text: string) => void) {
       // Rebuild from the full result list every time instead of appending, so nothing is added twice.
       const phrases: string[] = [];
       for (let i = 0; i < e.results.length; i++) phrases.push(e.results[i][0].transcript);
-      onChangeRef.current(joinNote(base, joinPhrases(phrases)));
+      spoken = joinPhrases(phrases);
+      onChangeRef.current(joinNote(base, spoken));
     };
     r.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
@@ -128,7 +136,10 @@ export function useDictation(value: string, onChange: (text: string) => void) {
         setError("Couldn't hear that. Try again.");
       }
     };
-    r.onend = () => setListening(false);
+    r.onend = () => {
+      setListening(false);
+      if (spoken.trim()) onFinishRef.current?.(base, spoken);
+    };
     rec.current = r;
     try {
       r.start();

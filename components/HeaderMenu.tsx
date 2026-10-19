@@ -48,6 +48,12 @@ export default function HeaderMenu({
               <small>{email}</small>
             </span>
           </div>
+          <Link role="menuitem" className="menu-item" href="/stats" onClick={() => setOpen(false)}>
+            Reading stats
+          </Link>
+          <Link role="menuitem" className="menu-item" href="/next" onClick={() => setOpen(false)}>
+            What to read next
+          </Link>
           {canEditNote ? (
             <Link role="menuitem" className="menu-item" href="/note" onClick={() => setOpen(false)}>
               Edit Alex&rsquo;s note

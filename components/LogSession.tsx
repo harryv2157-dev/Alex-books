@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { logSession } from "@/app/actions";
-import { useDictation } from "./useDictation";
+import { useTidyDictation } from "./useTidyDictation";
 
 type Timer = { startedAt: number | null; savedMs: number };
 
@@ -61,7 +61,7 @@ export default function LogSession({
   const [timer, setTimer] = useState<Timer>({ startedAt: null, savedMs: 0 });
   const [now, setNow] = useState(() => Date.now());
   const [today, setToday] = useState("");
-  const dictation = useDictation(note, setNote);
+  const dictation = useTidyDictation(bookId, note, setNote);
 
   useEffect(() => {
     setTimer(loadTimer(bookId));
@@ -104,6 +104,7 @@ export default function LogSession({
         );
         setPage("");
         setNote("");
+        dictation.clearUndo();
         updateTimer({ startedAt: null, savedMs: 0 });
         setTimeout(() => setSaved(null), 4000);
       } catch (err) {
@@ -180,14 +181,26 @@ export default function LogSession({
       <div className="jl-entry">
         <textarea
           value={note}
-          onChange={(e) => setNote(e.target.value)}
-          readOnly={dictation.listening}
+          onChange={(e) => {
+            setNote(e.target.value);
+            dictation.clearUndo();
+          }}
+          readOnly={dictation.listening || dictation.tidying}
           rows={4}
           placeholder="Tap the mic and just talk: what happened, what you loved, what annoyed you. Or type here."
           aria-label="Your thoughts on this part"
         />
         {dictation.listening ? <span className="jl-live">listening…</span> : null}
+        {dictation.tidying ? <span className="jl-live">tidying up…</span> : null}
       </div>
+      {dictation.canUndo ? (
+        <p className="tidied">
+          Tidied up by Claude ·{" "}
+          <button type="button" className="jl-link" onClick={dictation.undoTidy}>
+            Undo
+          </button>
+        </p>
+      ) : null}
 
       <div className="jl-mic-wrap">
         <div className={`jl-wave ${dictation.listening ? "on" : ""}`} aria-hidden="true">

@@ -10,6 +10,9 @@ import SessionList from "@/components/SessionList";
 import BookSettings from "@/components/BookSettings";
 import Stars from "@/components/Stars";
 import BookModel from "@/components/BookModel";
+import WhereWasI from "@/components/WhereWasI";
+import BuddyPanel from "@/components/BuddyPanel";
+import { buddyReadFor, canStartBuddyReads } from "@/lib/buddy";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +22,7 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
   const book = await getBook(reader.id, Number(id));
   if (!book) notFound();
   const sessions = await listSessions(book.id);
+  const buddyRead = await buddyReadFor(reader.id, book.id, book.current_page);
   const pct = progressPercent(book);
   const finished = book.status === "finished";
 
@@ -63,9 +67,12 @@ export default async function BookPage({ params }: { params: Promise<{ id: strin
           </>
         ) : (
           <>
+            {book.last_note ? <WhereWasI bookId={book.id} /> : null}
             <LogSession bookId={book.id} currentPage={book.current_page} totalPages={book.total_pages} />
           </>
         )}
+
+        <BuddyPanel bookId={book.id} read={buddyRead} canStart={canStartBuddyReads(reader)} myPage={book.current_page} />
 
         <section className="card">
           <h2>Reading journal</h2>

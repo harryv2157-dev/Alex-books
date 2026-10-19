@@ -58,7 +58,7 @@ export default function FinishBook({
       </label>
       <label>
         Your review
-        <NoteField value={text} onChange={setText} placeholder="What did you make of it?" rows={6} />
+        <NoteField value={text} onChange={setText} placeholder="What did you make of it?" rows={6} bookId={bookId} />
       </label>
       <div className="row">
         <button type="button" className="btn" onClick={() => (finished ? setEditing(false) : setOpen(false))}>

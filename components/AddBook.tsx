@@ -7,8 +7,9 @@ import PhotoPicker from "./PhotoPicker";
 
 type Draft = { title: string; author: string; pages: string; coverUrl: string | null; photo: string | null };
 
-export default function AddBook() {
-  const [q, setQ] = useState("");
+export default function AddBook({ initialQuery = "" }: { initialQuery?: string }) {
+  const [q, setQ] = useState(initialQuery);
+  const [searched, setSearched] = useState(false);
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
@@ -20,6 +21,7 @@ export default function AddBook() {
     const term = q.trim();
     if (term.length < 3) {
       setResults([]);
+      setSearched(false);
       return;
     }
     const ctrl = new AbortController();
@@ -30,6 +32,7 @@ export default function AddBook() {
         const res = await fetch(`/api/search?q=${encodeURIComponent(term)}`, { signal: ctrl.signal });
         const data = (await res.json()) as { results: SearchResult[]; error?: string };
         setResults(data.results);
+        setSearched(true);
         if (data.error) setSearchError(data.error);
       } catch (e) {
         if ((e as Error).name !== "AbortError") setSearchError("Search failed — you can still add it by hand.");
@@ -149,12 +152,25 @@ export default function AddBook() {
           </li>
         ))}
       </ul>
-      <button
-        className="link-btn"
-        onClick={() => setDraft({ title: q.trim(), author: "", pages: "", coverUrl: null, photo: null })}
-      >
-        Can't find it? Add it by hand
-      </button>
+      {searched && !searching && results.length === 0 ? (
+        <div className="card cant-find">
+          <h2>Can&rsquo;t find your book?</h2>
+          <p className="muted">No problem. Add it yourself: snap a photo of the cover and type the title and page count.</p>
+          <button
+            className="btn btn-primary"
+            onClick={() => setDraft({ title: q.trim(), author: "", pages: "", coverUrl: null, photo: null })}
+          >
+            Add &ldquo;{q.trim()}&rdquo; myself
+          </button>
+        </div>
+      ) : (
+        <button
+          className="link-btn"
+          onClick={() => setDraft({ title: q.trim(), author: "", pages: "", coverUrl: null, photo: null })}
+        >
+          Can&rsquo;t find your book? Add it yourself
+        </button>
+      )}
     </div>
   );
 }

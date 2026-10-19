@@ -59,6 +59,43 @@ CREATE TABLE IF NOT EXISTS reading_sessions (
 );
 CREATE INDEX IF NOT EXISTS sessions_book_idx ON reading_sessions(book_id);
 ALTER TABLE reading_sessions ADD COLUMN IF NOT EXISTS minutes INTEGER;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS recap TEXT;
+ALTER TABLE books ADD COLUMN IF NOT EXISTS recap_basis TEXT;
+
+CREATE TABLE IF NOT EXISTS recommendations (
+  user_id     INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  items       JSONB NOT NULL,
+  basis       TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS buddy_reads (
+  id           SERIAL PRIMARY KEY,
+  code         TEXT UNIQUE NOT NULL,
+  title        TEXT NOT NULL,
+  author       TEXT,
+  total_pages  INTEGER,
+  cover_url    TEXT,
+  created_by   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE TABLE IF NOT EXISTS buddy_members (
+  buddy_id   INTEGER NOT NULL REFERENCES buddy_reads(id) ON DELETE CASCADE,
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  book_id    INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
+  joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (buddy_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS year_reviews (
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  year        INTEGER NOT NULL,
+  story       TEXT NOT NULL,
+  highlights  JSONB NOT NULL,
+  basis       TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, year)
+);
 
 CREATE TABLE IF NOT EXISTS love_note (
   id          INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
