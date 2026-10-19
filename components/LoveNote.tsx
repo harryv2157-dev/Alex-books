@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-const SEEN_KEY = "alex-books:love-note-seen";
+// Bump the version whenever the message changes so it shows again.
+const SEEN_KEY = "alex-books:love-note-seen:v2";
 
 type Platform = "ios" | "android" | "installed" | "other";
 
@@ -17,7 +18,7 @@ function detectPlatform(): Platform {
   return "other";
 }
 
-export default function LoveNote({ name }: { name: string | null }) {
+export default function LoveNote() {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>("other");
 
@@ -45,17 +46,12 @@ export default function LoveNote({ name }: { name: string | null }) {
       {open ? (
         <div className="overlay" onClick={close}>
           <div className="love-note" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="A note for you">
-            <p className="love-heart" aria-hidden>
-              ♥
-            </p>
-            <h2>Hi {name ?? "you"},</h2>
-            <p>
-              This little library was made just for you, a place for every book you fall into, every page you get to,
-              and every thought you have along the way.
-            </p>
-            <p>
-              <strong>You are so very loved.</strong> Happy reading.
-            </p>
+            <h2>
+              hey Alex <span className="love-heart">♥</span>
+            </h2>
+            <p>love you, hope your having a good day</p>
+            <p>updated the voice recording so let me know if it works.</p>
+            <p>miss you x :)</p>
 
             {platform !== "installed" ? (
               <div className="love-steps">

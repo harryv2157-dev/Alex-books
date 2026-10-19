@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         ) : (
           <Bookshelf books={books} />
         )}
-        {showLoveNote ? <LoveNote name={firstName ?? null} /> : null}
+        {showLoveNote ? <LoveNote /> : null}
       </main>
     </>
   );
