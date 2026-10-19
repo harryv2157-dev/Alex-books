@@ -5,6 +5,7 @@ import Bookshelf from "@/components/Bookshelf";
 import SignInButton from "@/components/SignInButton";
 import Link from "next/link";
 import LoveNote from "@/components/LoveNote";
+import { getLoveNote, isNoteRecipient } from "@/lib/loveNote";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +38,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
 
   const books = await listBooks(reader.id);
   // A private note for one reader only, chosen by the LOVE_NOTE_EMAIL setting on the server.
-  const loveNoteEmail = process.env.LOVE_NOTE_EMAIL?.trim().toLowerCase();
-  const showLoveNote = Boolean(loveNoteEmail) && reader.email.toLowerCase() === loveNoteEmail;
+  const loveNote = isNoteRecipient(reader) ? await getLoveNote() : null;
   const firstName = reader.name?.split(" ")[0];
   return (
     <>
@@ -55,7 +55,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ e
         ) : (
           <Bookshelf books={books} />
         )}
-        {showLoveNote ? <LoveNote /> : null}
+        {loveNote ? <LoveNote message={loveNote.message} unread={!loveNote.seenAt} /> : null}
       </main>
     </>
   );

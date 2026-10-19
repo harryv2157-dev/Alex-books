@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { requireReader } from "@/lib/auth";
 import { getBook, listSessions } from "@/lib/books";
 import { query } from "@/lib/db";
+import { DEFAULT_LOVE_NOTE, isNoteEditor, isNoteRecipient } from "@/lib/loveNote";
 
 function parseDataUrl(dataUrl: string | null | undefined): { type: string; data: Buffer } | null {
   if (!dataUrl) return null;
@@ -191,4 +192,29 @@ export async function synthesizeThoughts(bookId: number): Promise<{ ok: true } |
     }
     throw err;
   }
+}
+
+export async function saveLoveNote(message: string) {
+  const reader = await requireReader();
+  if (!isNoteEditor(reader)) throw new Error("Not allowed");
+  const text = message.trim();
+  if (!text) throw new Error("The note can't be empty");
+  await query(
+    `INSERT INTO love_note (id, message, updated_at, seen_at) VALUES (1, $1, now(), NULL)
+     ON CONFLICT (id) DO UPDATE SET message = EXCLUDED.message, updated_at = now(), seen_at = NULL`,
+    [text],
+  );
+  revalidatePath("/note");
+  revalidatePath("/");
+}
+
+export async function markLoveNoteSeen() {
+  const reader = await requireReader();
+  if (!isNoteRecipient(reader)) return;
+  // Create the row from the default message the first time she reads it, so "seen" sticks.
+  await query(
+    `INSERT INTO love_note (id, message, seen_at) VALUES (1, $1, now())
+     ON CONFLICT (id) DO UPDATE SET seen_at = now()`,
+    [DEFAULT_LOVE_NOTE],
+  );
 }

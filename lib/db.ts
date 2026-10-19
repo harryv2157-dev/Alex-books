@@ -56,6 +56,13 @@ CREATE TABLE IF NOT EXISTS reading_sessions (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS sessions_book_idx ON reading_sessions(book_id);
+
+CREATE TABLE IF NOT EXISTS love_note (
+  id          INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  message     TEXT NOT NULL,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  seen_at     TIMESTAMPTZ
+);
 `;
 
 function ready(): Promise<void> {

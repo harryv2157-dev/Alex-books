@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-
-// Bump the version whenever the message changes so it shows again.
-const SEEN_KEY = "alex-books:love-note-seen:v2";
+import { markLoveNoteSeen } from "@/app/actions";
 
 type Platform = "ios" | "android" | "installed" | "other";
 
@@ -18,24 +16,47 @@ function detectPlatform(): Platform {
   return "other";
 }
 
-export default function LoveNote() {
+// Hearts are drawn in red.
+function withHearts(text: string) {
+  return text.split(/(♥|❤️?)/u).map((part, i) =>
+    /^(♥|❤️?)$/u.test(part) ? (
+      <span key={i} className="love-heart">
+        ♥
+      </span>
+    ) : (
+      part
+    ),
+  );
+}
+
+// First line is the greeting; blank lines separate paragraphs.
+export function NoteMessage({ message }: { message: string }) {
+  const [first, ...rest] = message.trim().split("\n");
+  const paragraphs = rest.join("\n").trim().split(/\n\s*\n/).filter(Boolean);
+  return (
+    <>
+      <h2>{withHearts(first)}</h2>
+      {paragraphs.map((p, i) => (
+        <p key={i} className="love-text">
+          {withHearts(p)}
+        </p>
+      ))}
+    </>
+  );
+}
+
+export default function LoveNote({ message, unread }: { message: string; unread: boolean }) {
   const [open, setOpen] = useState(false);
   const [platform, setPlatform] = useState<Platform>("other");
 
   useEffect(() => {
     setPlatform(detectPlatform());
-    let seen = false;
-    try {
-      seen = localStorage.getItem(SEEN_KEY) === "1";
-    } catch {}
-    if (!seen) setOpen(true);
-  }, []);
+    if (unread) setOpen(true);
+  }, [unread]);
 
   const close = () => {
-    try {
-      localStorage.setItem(SEEN_KEY, "1");
-    } catch {}
     setOpen(false);
+    markLoveNoteSeen().catch(() => {});
   };
 
   return (
@@ -46,12 +67,7 @@ export default function LoveNote() {
       {open ? (
         <div className="overlay" onClick={close}>
           <div className="love-note" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="A note for you">
-            <h2>
-              hey Alex <span className="love-heart">♥</span>
-            </h2>
-            <p>love you, hope your having a good day</p>
-            <p>updated the voice recording so let me know if it works.</p>
-            <p>miss you x :)</p>
+            <NoteMessage message={message} />
 
             {platform !== "installed" ? (
               <div className="love-steps">
